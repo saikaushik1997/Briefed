@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node
+node_modules/
+
+# Local uploads (use R2 in prod)
+backend/uploads/
+
+# MLflow local artifacts
+mlflow/mlartifacts/
+mlruns/
