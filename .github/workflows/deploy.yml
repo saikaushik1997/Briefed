@@ -12,11 +12,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r backend/requirements.txt
-      - run: python -m pytest backend/tests/ -v || true  # no tests yet, don't fail
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh && echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Install dependencies
+        run: uv pip install --system -r backend/requirements.txt
+      - name: Run tests
+        run: python -m pytest backend/tests/ -v || true
+
+  deploy-mlflow:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        working-directory: mlflow
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
   deploy-backend:
-    needs: test
+    needs: deploy-mlflow
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -5,6 +5,7 @@ from ..state import PipelineState
 from ..tools.mlflow_logger import log_stage
 from ..tools.pdf_parser import extract_text_from_pages
 from ..tools.llm import agent_trace, get_model, extract_usage
+from ..tools.decisions import emit as emit_decision
 
 TEXT_PROMPT = """\
 You are analyzing extracted text from a document. Summarize the content clearly and extract any concrete facts, figures, or claims.
@@ -41,6 +42,16 @@ async def run(state: PipelineState) -> PipelineState:
     key_facts = []
     tokens_in = tokens_out = 0
     cost = 0.0
+
+    await emit_decision(
+        document_id=document_id,
+        stage="text_agent",
+        decision_type="model_selection",
+        choice_made=model_name,
+        alternatives=[{"option": "gpt-4o", "reason_rejected": "cost — gpt-4o-mini sufficient for text summarization"}],
+        rationale="Text summarization does not require a large model",
+        cost_impact=0.0,
+    )
 
     if raw_text.strip():
         llm = get_model(model_name, temperature=0, max_tokens=1024)

@@ -6,6 +6,7 @@ from ..state import PipelineState
 from ..tools.mlflow_logger import log_stage
 from ..tools.pdf_parser import detect_page_content
 from ..tools.llm import agent_trace, get_model, extract_usage
+from ..tools.decisions import emit as emit_decision
 
 CLASSIFIER_PROMPT = """\
 Analyze this PDF page and classify the content types present.
@@ -85,6 +86,21 @@ async def run(state: PipelineState) -> PipelineState:
             "content_types": content_types,
             "has_ocr_needed": has_ocr,
         })
+
+    # Emit routing decision — which agents were selected and why
+    needed = set()
+    for c in classifications:
+        needed.update(c["content_types"])
+
+    await emit_decision(
+        document_id=document_id,
+        stage="classifier",
+        decision_type="routing",
+        choice_made=", ".join(sorted(needed)) or "text",
+        alternatives=[],
+        rationale=f"Detected content types across {len(classifications)} pages: {', '.join(sorted(needed))}",
+        cost_impact=0.0,
+    )
 
     latency = time.time() - start
 

@@ -1,35 +1,31 @@
-app = "briefed-backend"
+app = "briefed-mlflow"
 primary_region = "ord"
 
 [build]
   dockerfile = "Dockerfile"
 
-[deploy]
-  release_command = "alembic upgrade head"
-
 [http_service]
-  internal_port = 8000
+  internal_port = 5050
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
-
-  [http_service.concurrency]
-    type = "requests"
-    hard_limit = 250
-    soft_limit = 200
 
 [[vm]]
   memory = "512mb"
   cpu_kind = "shared"
   cpus = 1
 
+[mounts]
+  source = "mlflow_data"
+  destination = "/mlflow"
+
 [checks]
   [checks.health]
-    grace_period = "10s"
-    interval = "15s"
+    grace_period = "15s"
+    interval = "30s"
     method = "GET"
     path = "/health"
-    port = 8000
+    port = 5050
     timeout = "5s"
     type = "http"

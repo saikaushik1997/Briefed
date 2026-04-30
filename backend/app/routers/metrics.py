@@ -30,3 +30,31 @@ async def get_summary(db: AsyncSession = Depends(get_db)):
         "avg_quality": round(row.avg_quality or 0.0, 3),
         "cache_hit_rate": round(cache_hits / total, 3) if total > 0 else 0.0,
     }
+
+
+@router.get("/quality-trend")
+async def get_quality_trend(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(
+            Document.filename,
+            Document.quality_score,
+            Document.total_cost,
+            Document.config_bundle_version,
+            Document.created_at,
+        )
+        .where(Document.status == "complete")
+        .where(Document.quality_score.isnot(None))
+        .order_by(Document.created_at)
+        .limit(50)
+    )
+    rows = result.all()
+    return [
+        {
+            "filename": r.filename,
+            "quality_score": round(r.quality_score, 3),
+            "total_cost": round(r.total_cost or 0.0, 4),
+            "config_bundle_version": r.config_bundle_version or "default",
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]

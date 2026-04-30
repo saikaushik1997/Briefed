@@ -7,6 +7,7 @@ from ..state import PipelineState
 from ..tools.mlflow_logger import log_stage
 from ..tools.pdf_parser import render_page_as_image
 from ..tools.llm import agent_trace, get_model, extract_usage
+from ..tools.decisions import emit as emit_decision
 
 CHART_PROMPT = """\
 You are analyzing a chart or figure from a document page.
@@ -46,6 +47,16 @@ async def run(state: PipelineState) -> PipelineState:
     charts = []
     total_tokens_in = total_tokens_out = 0
     total_cost = 0.0
+
+    await emit_decision(
+        document_id=document_id,
+        stage="chart_agent",
+        decision_type="model_selection",
+        choice_made=model_name,
+        alternatives=[{"option": "claude-3-5-sonnet-20241022", "reason_rejected": "A/B challenger — not yet promoted to champion"}],
+        rationale="Vision model from active config bundle — primary A/B testing target",
+        cost_impact=0.028 if model_name == "gpt-4o" else 0.019,
+    )
 
     if chart_pages:
         llm = get_model(model_name, temperature=0, max_tokens=512)

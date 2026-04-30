@@ -35,6 +35,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://briefed:briefed@db:5432/briefed
       REDIS_URL: redis://redis:6379
       MLFLOW_TRACKING_URI: http://mlflow:5050
+      GIT_PYTHON_REFRESH: quiet
     volumes:
       - ./backend:/app
       - uploads:/app/uploads

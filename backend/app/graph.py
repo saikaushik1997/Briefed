@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph, END
 
 from .state import PipelineState
 from .agents import classifier, text, table, chart, synthesis, quality
+from .tools.decisions import emit as emit_decision
 
 
 def _needed_agents(state: PipelineState) -> set:
@@ -11,6 +12,18 @@ def _needed_agents(state: PipelineState) -> set:
         for ct in page.get("content_types", []):
             needed.add(ct)
     return needed
+
+
+async def _emit_skip(state: PipelineState, stage: str, cost_saved: float):
+    from .tools.decisions import emit as emit_decision
+    await emit_decision(
+        document_id=state["document_id"],
+        stage=stage,
+        decision_type="skip",
+        choice_made=f"{stage} skipped — not detected by classifier",
+        rationale="Classifier found no relevant content type on any page",
+        cost_impact=-cost_saved,
+    )
 
 
 def _route_after_classify(state: PipelineState) -> str:
@@ -104,13 +117,22 @@ async def run_graph(document_id: str, pdf_path: str):
         await db.commit()
 
     from .tools.mlflow_logger import start_run, end_run, log_totals
+    from .tools.config_bundle import load_champion
+    from .tools.decisions import emit as emit_decision
+    import mlflow
 
     mlflow_run_id = await start_run(document_id)
+
+    # Load active config bundle from MLflow Registry
+    config = load_champion()
+    mlflow.log_param("config_bundle_version", config.get("_bundle_version", "default"))
+    mlflow.log_param("chart_model", config.get("chart_model", "gpt-4o"))
+    mlflow.log_param("synthesis_model", config.get("synthesis_model", "gpt-4o-mini"))
 
     initial_state: PipelineState = {
         "document_id": document_id,
         "pdf_path": pdf_path,
-        "config": {},
+        "config": config,
         "page_classifications": [],
         "text_result": None,
         "table_result": None,
@@ -123,6 +145,21 @@ async def run_graph(document_id: str, pdf_path: str):
 
     try:
         final_state = await _graph.ainvoke(initial_state)
+
+        # Emit skip decisions for agents that were not needed
+        needed = set()
+        for p in final_state.get("page_classifications", []):
+            needed.update(p.get("content_types", []))
+        chart_cost = final_state.get("config", {}).get("chart_model_cost_estimate", 0.028)
+        if "chart" not in needed:
+            await emit_decision(final_state["document_id"], "chart_agent", "skip",
+                                "chart_agent skipped — no charts detected", cost_impact=-chart_cost)
+        if "table" not in needed:
+            await emit_decision(final_state["document_id"], "table_agent", "skip",
+                                "table_agent skipped — no tables detected", cost_impact=-0.004)
+        if "text" not in needed:
+            await emit_decision(final_state["document_id"], "text_agent", "skip",
+                                "text_agent skipped — no text detected", cost_impact=-0.002)
 
         # Roll up totals from all stages and mark complete
         async with AsyncSessionLocal() as db:

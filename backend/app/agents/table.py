@@ -6,6 +6,7 @@ from ..state import PipelineState
 from ..tools.mlflow_logger import log_stage
 from ..tools.pdf_parser import extract_tables_from_pages
 from ..tools.llm import agent_trace, get_model, extract_usage
+from ..tools.decisions import emit as emit_decision
 
 TABLE_PROMPT = """\
 You are analyzing a table extracted from a document.
@@ -47,6 +48,16 @@ async def run(state: PipelineState) -> PipelineState:
         p["page"] for p in state["page_classifications"]
         if "table" in p.get("content_types", [])
     ]
+
+    await emit_decision(
+        document_id=document_id,
+        stage="table_agent",
+        decision_type="method_selection",
+        choice_made="pdfplumber",
+        alternatives=[{"option": "camelot", "reason_rejected": "requires Ghostscript, struggles with borderless tables"}],
+        rationale="pdfplumber handles borderless tables and is pure Python",
+        cost_impact=0.0,
+    )
 
     raw_tables = extract_tables_from_pages(pdf_path, table_pages)
 
