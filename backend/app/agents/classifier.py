@@ -5,7 +5,7 @@ from langchain_core.messages import HumanMessage
 from ..state import PipelineState
 from ..tools.mlflow_logger import log_stage
 from ..tools.pdf_parser import detect_page_content
-from ..tools.llm import agent_trace, get_model
+from ..tools.llm import agent_trace, get_model, extract_usage
 
 CLASSIFIER_PROMPT = """\
 Analyze this PDF page and classify the content types present.
@@ -54,10 +54,9 @@ async def run(state: PipelineState) -> PipelineState:
         response = await llm.ainvoke([HumanMessage(content=prompt)])
         raw = response.content.strip()
 
-        # Approximate token counts from response metadata if available
-        usage = getattr(response, "usage_metadata", None) or getattr(response, "response_metadata", {}).get("usage", {})
-        total_tokens_in += usage.get("input_tokens", 0) if isinstance(usage, dict) else getattr(usage, "input_tokens", 0)
-        total_tokens_out += usage.get("output_tokens", 0) if isinstance(usage, dict) else getattr(usage, "output_tokens", 0)
+        usage = extract_usage(response)
+        total_tokens_in += usage["input_tokens"]
+        total_tokens_out += usage["output_tokens"]
 
         try:
             if raw.startswith("```"):

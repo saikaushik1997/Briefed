@@ -36,3 +36,25 @@ def agent_trace(name: str):
     Usage: @agent_trace("classifier")
     """
     return traceable(name=name, run_type="chain")
+
+
+def extract_usage(response) -> dict:
+    """
+    Pulls token counts from a LangChain AIMessage response.
+    LangChain standardised on usage_metadata in recent versions but
+    some models still return via response_metadata — check both.
+    Returns {"input_tokens": int, "output_tokens": int}.
+    """
+    # Preferred: usage_metadata (LangChain standard)
+    if hasattr(response, "usage_metadata") and response.usage_metadata:
+        m = response.usage_metadata
+        return {
+            "input_tokens": m.get("input_tokens", 0),
+            "output_tokens": m.get("output_tokens", 0),
+        }
+    # Fallback: response_metadata.token_usage (OpenAI style)
+    token_usage = (getattr(response, "response_metadata", {}) or {}).get("token_usage", {})
+    return {
+        "input_tokens": token_usage.get("prompt_tokens", 0),
+        "output_tokens": token_usage.get("completion_tokens", 0),
+    }
