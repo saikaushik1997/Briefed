@@ -20,6 +20,7 @@ langsmith>=0.1.17
 pdfplumber==0.11.4
 pypdf==5.1.0
 pillow==11.0.0
+pymupdf==1.24.14
 
 redis==5.2.0
 arq==0.26.1

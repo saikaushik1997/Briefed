@@ -62,5 +62,9 @@ def extract_tables_from_pages(pdf_path: str, pages: List[int]) -> List[dict]:
 
 def render_page_as_image(pdf_path: str, page_num: int, dpi: int = 150) -> bytes:
     """Render a single page to PNG bytes for vision model input."""
-    # TODO: implement with pdf2image or pymupdf
-    raise NotImplementedError("Page rendering not yet implemented")
+    import fitz  # pymupdf
+    doc = fitz.open(pdf_path)
+    page = doc[page_num - 1]
+    mat = fitz.Matrix(dpi / 72, dpi / 72)
+    pix = page.get_pixmap(matrix=mat)
+    return pix.tobytes("png")
