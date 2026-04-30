@@ -1,8 +1,10 @@
 import time
-from ..graph import PipelineState
+from ..state import PipelineState
 from ..tools.mlflow_logger import log_stage
+from ..tools.llm import agent_trace
 
 
+@agent_trace("synthesis_agent")
 async def run(state: PipelineState) -> PipelineState:
     """
     Takes text, table, and chart outputs and produces:

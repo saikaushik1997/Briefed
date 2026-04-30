@@ -9,6 +9,7 @@ langgraph>=0.2.53
 langchain>=0.3.9
 langchain-openai>=0.2.10
 langchain-anthropic>=0.3.0
+langchain-community>=0.3.9
 
 litellm>=1.52.9
 

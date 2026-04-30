@@ -1,8 +1,10 @@
 import time
-from ..graph import PipelineState
+from ..state import PipelineState
 from ..tools.mlflow_logger import log_stage
+from ..tools.llm import agent_trace
 
 
+@agent_trace("quality_agent")
 async def run(state: PipelineState) -> PipelineState:
     """
     LLM-as-judge: checks whether the plain explanation is faithful to the

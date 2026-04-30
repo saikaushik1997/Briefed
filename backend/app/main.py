@@ -3,10 +3,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .routers import documents, metrics
+from .tools import llm
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    llm.setup()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield

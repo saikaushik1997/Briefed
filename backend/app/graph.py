@@ -1,67 +1,43 @@
 import uuid
-from typing import TypedDict, List, Optional, Annotated
 from langgraph.graph import StateGraph, END
-from langgraph.graph.message import add_messages
 
+from .state import PipelineState
 from .agents import classifier, text, table, chart, synthesis, quality
-from .tools.mlflow_logger import pipeline_run
 
 
-class PageClassification(TypedDict):
-    page: int
-    content_types: List[str]  # text, table, chart
-    has_ocr_needed: bool
-
-
-class PipelineState(TypedDict):
-    document_id: str
-    pdf_path: str
-    config: dict
-    page_classifications: List[PageClassification]
-    text_result: Optional[dict]
-    table_result: Optional[dict]
-    chart_result: Optional[dict]
-    synthesis_result: Optional[dict]
-    quality_result: Optional[dict]
-    decisions: List[dict]
-    errors: List[str]
-
-
-def _route_after_classify(state: PipelineState) -> List[str]:
-    """Fan out to whichever agents are needed based on classifier output."""
-    pages = state.get("page_classifications", [])
+def _needed_agents(state: PipelineState) -> set:
     needed = set()
-    for page in pages:
-        for content_type in page.get("content_types", []):
-            needed.add(content_type)
-
-    routes = []
-    if "text" in needed:
-        routes.append("text_extract")
-    if "table" in needed:
-        routes.append("table_extract")
-    if "chart" in needed:
-        routes.append("chart_extract")
-
-    # If nothing detected (empty doc), go straight to synthesis
-    return routes or ["synthesize"]
-
-
-def _all_extractions_done(state: PipelineState) -> str:
-    """Called after each extraction node — only proceeds to synthesis when all are done."""
-    pages = state.get("page_classifications", [])
-    needed = set()
-    for page in pages:
+    for page in state.get("page_classifications", []):
         for ct in page.get("content_types", []):
             needed.add(ct)
+    return needed
 
-    text_done = "text" not in needed or state.get("text_result") is not None
-    table_done = "table" not in needed or state.get("table_result") is not None
-    chart_done = "chart" not in needed or state.get("chart_result") is not None
 
-    if text_done and table_done and chart_done:
-        return "synthesize"
-    return "wait"
+def _route_after_classify(state: PipelineState) -> str:
+    needed = _needed_agents(state)
+    if "text" in needed:
+        return "text_extract"
+    if "table" in needed:
+        return "table_extract"
+    if "chart" in needed:
+        return "chart_extract"
+    return "synthesize"
+
+
+def _route_after_text(state: PipelineState) -> str:
+    needed = _needed_agents(state)
+    if "table" in needed:
+        return "table_extract"
+    if "chart" in needed:
+        return "chart_extract"
+    return "synthesize"
+
+
+def _route_after_table(state: PipelineState) -> str:
+    needed = _needed_agents(state)
+    if "chart" in needed:
+        return "chart_extract"
+    return "synthesize"
 
 
 def build_graph() -> StateGraph:
@@ -86,14 +62,25 @@ def build_graph() -> StateGraph:
             "synthesize": "synthesize",
         },
     )
+    graph.add_conditional_edges(
+        "text_extract",
+        _route_after_text,
+        {
+            "table_extract": "table_extract",
+            "chart_extract": "chart_extract",
+            "synthesize": "synthesize",
+        },
+    )
+    graph.add_conditional_edges(
+        "table_extract",
+        _route_after_table,
+        {
+            "chart_extract": "chart_extract",
+            "synthesize": "synthesize",
+        },
+    )
 
-    for extraction_node in ["text_extract", "table_extract", "chart_extract"]:
-        graph.add_conditional_edges(
-            extraction_node,
-            _all_extractions_done,
-            {"synthesize": "synthesize", "wait": END},
-        )
-
+    graph.add_edge("chart_extract", "synthesize")
     graph.add_edge("synthesize", "score_quality")
     graph.add_edge("score_quality", END)
 
@@ -104,7 +91,6 @@ _graph = build_graph()
 
 
 async def run_graph(document_id: str, pdf_path: str):
-    from .tools.mlflow_logger import start_run, end_run
     from .database import AsyncSessionLocal
     from .models import Document
     from sqlalchemy import select
@@ -114,16 +100,17 @@ async def run_graph(document_id: str, pdf_path: str):
         doc = result.scalar_one_or_none()
         if not doc:
             return
-
         doc.status = "processing"
         await db.commit()
+
+    from .tools.mlflow_logger import start_run, end_run, log_totals
 
     mlflow_run_id = await start_run(document_id)
 
     initial_state: PipelineState = {
         "document_id": document_id,
         "pdf_path": pdf_path,
-        "config": {},  # loaded from MLflow Registry in each agent
+        "config": {},
         "page_classifications": [],
         "text_result": None,
         "table_result": None,
@@ -135,11 +122,37 @@ async def run_graph(document_id: str, pdf_path: str):
     }
 
     try:
-        await _graph.ainvoke(initial_state)
+        final_state = await _graph.ainvoke(initial_state)
+
+        # Roll up totals from all stages and mark complete
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Document).where(Document.id == uuid.UUID(document_id))
+            )
+            doc = result.scalar_one_or_none()
+            if doc:
+                from sqlalchemy import select as sa_select
+                from .models import PipelineStage
+                stages_result = await db.execute(
+                    sa_select(PipelineStage).where(PipelineStage.document_id == uuid.UUID(document_id))
+                )
+                stages = stages_result.scalars().all()
+                doc.total_cost = sum(s.cost or 0 for s in stages)
+                doc.total_latency = sum(s.latency or 0 for s in stages)
+                doc.quality_score = (
+                    final_state.get("quality_result", {}) or {}
+                ).get("score")
+                doc.status = "complete"
+                await db.commit()
+
+        await log_totals(document_id, doc.total_cost, doc.total_latency)
         await end_run(mlflow_run_id, status="FINISHED")
+
     except Exception as e:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(Document).where(Document.id == uuid.UUID(document_id)))
+            result = await db.execute(
+                select(Document).where(Document.id == uuid.UUID(document_id))
+            )
             doc = result.scalar_one_or_none()
             if doc:
                 doc.status = "failed"

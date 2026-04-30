@@ -7,6 +7,27 @@ def get_page_count(pdf_path: str) -> int:
         return len(pdf.pages)
 
 
+def detect_page_content(pdf_path: str) -> List[dict]:
+    """
+    Returns per-page hints used by the classifier.
+    Cheap heuristics run before any LLM call so the classifier
+    only needs to confirm/refine, not discover from scratch.
+    """
+    results = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for i, page in enumerate(pdf.pages):
+            text = page.extract_text() or ""
+            tables = page.extract_tables() or []
+            images = page.images or []
+            results.append({
+                "page": i + 1,
+                "text_preview": text[:600].strip(),
+                "has_tables": len(tables) > 0,
+                "has_images": len(images) > 0,
+            })
+    return results
+
+
 def extract_text_from_pages(pdf_path: str, pages: List[int]) -> str:
     """Extract raw text from specified 1-indexed page numbers."""
     chunks = []
@@ -25,7 +46,7 @@ def extract_tables_from_pages(pdf_path: str, pages: List[int]) -> List[dict]:
     with pdfplumber.open(pdf_path) as pdf:
         for page_num in pages:
             page = pdf.pages[page_num - 1]
-            tables = page.extract_tables()
+            tables = page.extract_tables() or []
             for i, table in enumerate(tables):
                 if not table:
                     continue
@@ -33,8 +54,8 @@ def extract_tables_from_pages(pdf_path: str, pages: List[int]) -> List[dict]:
                     "page": page_num,
                     "table_index": i,
                     "data": table,
-                    "title": "",          # TODO: infer from surrounding text
-                    "interpretation": "", # TODO: LLM interpretation
+                    "title": "",
+                    "interpretation": "",
                 })
     return results
 
@@ -42,5 +63,4 @@ def extract_tables_from_pages(pdf_path: str, pages: List[int]) -> List[dict]:
 def render_page_as_image(pdf_path: str, page_num: int, dpi: int = 150) -> bytes:
     """Render a single page to PNG bytes for vision model input."""
     # TODO: implement with pdf2image or pymupdf
-    # pip install pdf2image (requires poppler) or pymupdf (pip install pymupdf)
     raise NotImplementedError("Page rendering not yet implemented")

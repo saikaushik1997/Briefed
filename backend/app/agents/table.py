@@ -1,9 +1,11 @@
 import time
-from ..graph import PipelineState
+from ..state import PipelineState
 from ..tools.mlflow_logger import log_stage
 from ..tools.pdf_parser import extract_tables_from_pages
+from ..tools.llm import agent_trace
 
 
+@agent_trace("table_agent")
 async def run(state: PipelineState) -> PipelineState:
     """
     Extracts tables using pdfplumber and interprets each one with LiteLLM.
