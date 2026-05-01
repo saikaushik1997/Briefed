@@ -1,8 +1,23 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://briefed:briefed@localhost:5432/briefed"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def fix_db_url(cls, v: str) -> str:
+        # Fly.io Postgres attach sets postgres:// — SQLAlchemy needs postgresql+asyncpg://
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        # asyncpg doesn't accept sslmode query param — strip it
+        if "sslmode=" in v:
+            import re
+            v = re.sub(r"[?&]sslmode=[^&]*", "", v).rstrip("?")
+        return v
     redis_url: str = "redis://localhost:6379"
 
     openai_api_key: str = ""

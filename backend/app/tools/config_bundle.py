@@ -43,13 +43,14 @@ def _register_default_bundle() -> str:
             json.dump(DEFAULT_BUNDLE, f, indent=2)
 
         mlflow.set_experiment("briefed-pipeline")
-        with mlflow.start_run(run_name="register-default-bundle"):
+        with mlflow.start_run(run_name="register-default-bundle") as run:
             mlflow.log_artifact(config_path, artifact_path="config")
-            run_uri = mlflow.active_run().info.artifact_uri + "/config/config.json"
+            run_id = run.info.run_id
 
         version = client.create_model_version(
             name=MODEL_NAME,
-            source=run_uri,
+            source=f"runs:/{run_id}/config/config.json",
+            run_id=run_id,
             description="Default config bundle — all gpt-4o-mini except chart (gpt-4o vision)",
         )
 

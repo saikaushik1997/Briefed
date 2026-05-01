@@ -12,7 +12,7 @@ primary_region = "ord"
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
   [http_service.concurrency]
     type = "requests"
@@ -20,7 +20,7 @@ primary_region = "ord"
     soft_limit = 200
 
 [[vm]]
-  memory = "512mb"
+  memory = "1gb"
   cpu_kind = "shared"
   cpus = 1
 

@@ -7,5 +7,5 @@ EXPOSE 5050
 CMD ["mlflow", "server", \
      "--host", "0.0.0.0", \
      "--port", "5050", \
-     "--backend-store-uri", "/mlflow", \
+     "--backend-store-uri", "/mlflow/tracking", \
      "--default-artifact-root", "/mlflow/artifacts"]
