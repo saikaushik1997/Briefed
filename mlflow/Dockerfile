@@ -2,6 +2,8 @@ FROM python:3.11-slim
 
 RUN pip install --no-cache-dir mlflow psycopg2-binary
 
+ENV MLFLOW_DISABLE_DNS_REBINDING_PROTECTION=true
+
 EXPOSE 5050
 
 CMD ["mlflow", "server", \
