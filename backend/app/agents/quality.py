@@ -55,11 +55,10 @@ async def run(state: PipelineState) -> PipelineState:
 
     if plain_explanation and source_text:
         llm = get_model(judge_model, temperature=0, max_tokens=1024)
+        from ..tools.prompt_registry import load_prompt, render_prompt
+        template = load_prompt("briefed/judge", JUDGE_PROMPT)
         response = await llm.ainvoke([
-            HumanMessage(content=JUDGE_PROMPT.format(
-                source=source_text[:4000],
-                explanation=plain_explanation,
-            ))
+            HumanMessage(content=render_prompt(template, source=source_text[:4000], explanation=plain_explanation))
         ])
 
         usage = extract_usage(response)

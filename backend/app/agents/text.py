@@ -55,8 +55,10 @@ async def run(state: PipelineState) -> PipelineState:
 
     if raw_text.strip():
         llm = get_model(model_name, temperature=0, max_tokens=1024)
+        from ..tools.prompt_registry import load_prompt, render_prompt
+        template = load_prompt("briefed/text", TEXT_PROMPT)
         response = await llm.ainvoke([
-            HumanMessage(content=TEXT_PROMPT.format(text=raw_text[:6000]))
+            HumanMessage(content=render_prompt(template, text=raw_text[:6000]))
         ])
 
         usage = extract_usage(response)

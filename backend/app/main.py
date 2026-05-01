@@ -13,6 +13,22 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     from .tools.config_bundle import ensure_champion_exists
     ensure_champion_exists()
+
+    from .tools.prompt_registry import ensure_prompts_exist
+    from .agents.classifier import CLASSIFIER_PROMPT
+    from .agents.text import TEXT_PROMPT
+    from .agents.table import TABLE_PROMPT
+    from .agents.chart import CHART_PROMPT
+    from .agents.synthesis import SYNTHESIS_PROMPT
+    from .agents.quality import JUDGE_PROMPT
+    ensure_prompts_exist({
+        "briefed/classifier": (CLASSIFIER_PROMPT, "Page content classifier — routes pages to text/table/chart agents"),
+        "briefed/text": (TEXT_PROMPT, "Text summarization — extracts summary and key facts from prose"),
+        "briefed/table": (TABLE_PROMPT, "Table interpretation — titles and interprets extracted table data"),
+        "briefed/chart": (CHART_PROMPT, "Chart analysis — describes chart and extracts key insight from page image"),
+        "briefed/synthesis": (SYNTHESIS_PROMPT, "Synthesis — assembles all extracted content into structured plain-language explanation"),
+        "briefed/judge": (JUDGE_PROMPT, "LLM-as-judge — scores faithfulness of explanation against source text"),
+    })
     yield
     await engine.dispose()
 

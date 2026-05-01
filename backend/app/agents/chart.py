@@ -69,9 +69,11 @@ async def run(state: PipelineState) -> PipelineState:
 
             image_b64 = _image_to_base64(image_bytes)
 
+            from ..tools.prompt_registry import load_prompt
+            chart_prompt = load_prompt("briefed/chart", CHART_PROMPT)
             response = await llm.ainvoke([
                 HumanMessage(content=[
-                    {"type": "text", "text": CHART_PROMPT},
+                    {"type": "text", "text": chart_prompt},
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:image/png;base64,{image_b64}"},

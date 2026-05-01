@@ -45,11 +45,14 @@ async def run(state: PipelineState) -> PipelineState:
     total_cost = 0.0
 
     for info in page_infos:
-        prompt = CLASSIFIER_PROMPT.format(
-            page_num=info["page"],
+        from ..tools.prompt_registry import load_prompt, render_prompt
+        template = load_prompt("briefed/classifier", CLASSIFIER_PROMPT)
+        prompt = render_prompt(
+            template,
+            page_num=str(info["page"]),
             text_preview=info["text_preview"] or "(no text detected)",
-            has_tables=info["has_tables"],
-            has_images=info["has_images"],
+            has_tables=str(info["has_tables"]),
+            has_images=str(info["has_images"]),
         )
 
         response = await llm.ainvoke([HumanMessage(content=prompt)])
