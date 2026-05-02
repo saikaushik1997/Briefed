@@ -141,7 +141,7 @@ def register_challenger(
             name=MODEL_NAME,
             source=f"runs:/{run_id}/config/config.json",
             run_id=run_id,
-            description=f"Challenger: chart={chart_model}, synthesis={synthesis_model}, split={traffic_split}",
+            description=f"Challenger: chart={chart_model}, synthesis={synthesis_model}",
         )
         client.set_registered_model_alias(MODEL_NAME, "challenger", version.version)
         return version.version
