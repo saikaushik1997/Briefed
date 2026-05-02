@@ -75,7 +75,7 @@ async def run(state: PipelineState) -> PipelineState:
         for t in raw_tables:
             formatted = _format_table(t["data"])
             from ..tools.prompt_registry import load_prompt, render_prompt
-            template = load_prompt("briefed/table", TABLE_PROMPT)
+            template = load_prompt("briefed-table", TABLE_PROMPT)
             response = await llm.ainvoke([
                 HumanMessage(content=render_prompt(template, table_data=formatted, context=context_text))
             ])

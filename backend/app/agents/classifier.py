@@ -46,7 +46,7 @@ async def run(state: PipelineState) -> PipelineState:
 
     for info in page_infos:
         from ..tools.prompt_registry import load_prompt, render_prompt
-        template = load_prompt("briefed/classifier", CLASSIFIER_PROMPT)
+        template = load_prompt("briefed-classifier", CLASSIFIER_PROMPT)
         prompt = render_prompt(
             template,
             page_num=str(info["page"]),

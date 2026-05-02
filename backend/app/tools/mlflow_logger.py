@@ -11,6 +11,7 @@ except Exception:
 
 
 async def start_run(document_id: str) -> str:
+    mlflow.set_experiment(EXPERIMENT_NAME)
     run = mlflow.start_run(run_name=document_id, nested=False)
     mlflow.log_param("document_id", document_id)
     return run.info.run_id

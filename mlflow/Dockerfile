@@ -10,4 +10,6 @@ CMD ["mlflow", "server", \
      "--host", "0.0.0.0", \
      "--port", "5050", \
      "--backend-store-uri", "/mlflow/tracking", \
-     "--default-artifact-root", "/mlflow/artifacts"]
+     "--default-artifact-root", "/mlflow/artifacts", \
+     "--allowed-hosts", "*", \
+     "--cors-allowed-origins", "*"]

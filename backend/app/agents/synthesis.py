@@ -74,7 +74,7 @@ async def run(state: PipelineState) -> PipelineState:
     context = _build_context(state)
     llm = get_model(model_name, temperature=0, max_tokens=2048)
     from ..tools.prompt_registry import load_prompt, render_prompt
-    template = load_prompt("briefed/synthesis", SYNTHESIS_PROMPT)
+    template = load_prompt("briefed-synthesis", SYNTHESIS_PROMPT)
     response = await llm.ainvoke([
         HumanMessage(content=render_prompt(template, context=context))
     ])

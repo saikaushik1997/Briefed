@@ -1,5 +1,7 @@
+import logging
 import mlflow
 
+logger = logging.getLogger(__name__)
 _cache: dict[str, str] = {}
 
 
@@ -17,10 +19,12 @@ def load_prompt(name: str, fallback: str) -> str:
     if name in _cache:
         return _cache[name]
     try:
-        prompt = mlflow.load_prompt(f"prompts:/{name}/latest")
+        prompt = mlflow.load_prompt(name)
         _cache[name] = prompt.template
+        logger.warning("Loaded prompt from MLflow: %s", name)
         return prompt.template
-    except Exception:
+    except Exception as e:
+        logger.warning("Falling back to hardcoded prompt for %s: %s", name, e)
         _cache[name] = fallback
         return fallback
 
@@ -30,7 +34,8 @@ def ensure_prompts_exist(prompts: dict[str, tuple[str, str]]) -> None:
     prompts: {name: (template, description)}"""
     for name, (template, description) in prompts.items():
         try:
-            mlflow.load_prompt(f"prompts:/{name}/latest")
+            mlflow.load_prompt(name)
+            logger.warning("Prompt already registered: %s", name)
         except Exception:
             try:
                 mlflow.register_prompt(
@@ -39,5 +44,6 @@ def ensure_prompts_exist(prompts: dict[str, tuple[str, str]]) -> None:
                     commit_message=description,
                     tags={"project": "briefed"},
                 )
-            except Exception:
-                pass
+                logger.warning("Registered prompt: %s", name)
+            except Exception as e:
+                logger.error("Failed to register prompt %s: %s", name, e)

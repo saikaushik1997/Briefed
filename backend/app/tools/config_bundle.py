@@ -77,11 +77,15 @@ def load_champion() -> dict:
 
 def ensure_champion_exists():
     """Called at startup — registers default bundle if no champion exists."""
-    client = MlflowClient()
     try:
-        client.get_model_version_by_alias(MODEL_NAME, "champion")
-    except Exception:
-        _register_default_bundle()
+        client = MlflowClient()
+        try:
+            client.get_model_version_by_alias(MODEL_NAME, "champion")
+        except Exception:
+            _register_default_bundle()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("MLflow unavailable at startup, skipping champion registration: %s", e)
 
 
 def get_challenger() -> dict | None:

@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,12 +7,32 @@ from .database import engine, Base
 from .routers import documents, metrics, config
 from .tools import llm
 
+logger = logging.getLogger(__name__)
+
+
+async def _wait_for_mlflow(timeout: int = 60):
+    import httpx
+    from .config import settings
+    url = f"{settings.mlflow_tracking_uri.rstrip('/')}/health"
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url, timeout=3)
+                if r.status_code == 200:
+                    return
+        except Exception:
+            pass
+        await asyncio.sleep(2)
+    logger.warning("MLflow did not become ready within %ds — continuing anyway", timeout)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     llm.setup()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await _wait_for_mlflow()
     from .tools.config_bundle import ensure_champion_exists
     ensure_champion_exists()
 
@@ -23,12 +45,12 @@ async def lifespan(app: FastAPI):
     from .agents.quality import JUDGE_PROMPT
     import threading
     threading.Thread(target=ensure_prompts_exist, args=({
-        "briefed/classifier": (CLASSIFIER_PROMPT, "Page content classifier — routes pages to text/table/chart agents"),
-        "briefed/text": (TEXT_PROMPT, "Text summarization — extracts summary and key facts from prose"),
-        "briefed/table": (TABLE_PROMPT, "Table interpretation — titles and interprets extracted table data"),
-        "briefed/chart": (CHART_PROMPT, "Chart analysis — describes chart and extracts key insight from page image"),
-        "briefed/synthesis": (SYNTHESIS_PROMPT, "Synthesis — assembles all extracted content into structured plain-language explanation"),
-        "briefed/judge": (JUDGE_PROMPT, "LLM-as-judge — scores faithfulness of explanation against source text"),
+        "briefed-classifier": (CLASSIFIER_PROMPT, "Page content classifier — routes pages to text/table/chart agents"),
+        "briefed-text": (TEXT_PROMPT, "Text summarization — extracts summary and key facts from prose"),
+        "briefed-table": (TABLE_PROMPT, "Table interpretation — titles and interprets extracted table data"),
+        "briefed-chart": (CHART_PROMPT, "Chart analysis — describes chart and extracts key insight from page image"),
+        "briefed-synthesis": (SYNTHESIS_PROMPT, "Synthesis — assembles all extracted content into structured plain-language explanation"),
+        "briefed-judge": (JUDGE_PROMPT, "LLM-as-judge — scores faithfulness of explanation against source text"),
     },), daemon=True).start()
     yield
     await engine.dispose()
