@@ -1,8 +1,20 @@
+const MODEL_LABELS = {
+  classifier_model: 'Classifier',
+  text_model: 'Text',
+  table_model: 'Table',
+  chart_model: 'Chart',
+  synthesis_model: 'Synthesis',
+  judge_model: 'Judge',
+}
+
 export default function ChallengerBanner({ config }) {
   if (!config?.challenger) return null
 
-  const { champion, challenger, experiment_active } = config
-  const split = Math.round((challenger.traffic_split ?? 0.5) * 100)
+  const { champion, challenger } = config
+
+  const allKeys = Object.keys(MODEL_LABELS)
+  const diffKeys = allKeys.filter(k => champion[k] !== challenger[k])
+  const displayKeys = diffKeys.length > 0 ? diffKeys : allKeys
 
   return (
     <div className="rounded-xl border border-yellow-600/40 bg-yellow-900/20 px-5 py-4 text-sm space-y-3">
@@ -14,19 +26,27 @@ export default function ChallengerBanner({ config }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-slate-900/50 rounded-lg px-4 py-3 space-y-1">
-          <p className="text-slate-400 text-xs uppercase tracking-wide">Champion v{champion.version}</p>
-          <p className="text-slate-200">chart: <span className="text-slate-400">{champion.chart_model}</span></p>
-          <p className="text-slate-200">synthesis: <span className="text-slate-400">{champion.synthesis_model}</span></p>
+          <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">Champion v{champion.version}</p>
+          {displayKeys.map(k => (
+            <p key={k} className="text-slate-200">
+              {MODEL_LABELS[k]}: <span className="text-slate-400">{champion[k]}</span>
+            </p>
+          ))}
         </div>
         <div className="bg-slate-900/50 rounded-lg px-4 py-3 space-y-1 border border-yellow-600/20">
-          <p className="text-yellow-400 text-xs uppercase tracking-wide">Challenger v{challenger.version}</p>
-          <p className="text-slate-200">chart: <span className="text-slate-400">{challenger.chart_model}</span></p>
-          <p className="text-slate-200">synthesis: <span className="text-slate-400">{challenger.synthesis_model}</span></p>
+          <p className="text-yellow-400 text-xs uppercase tracking-wide mb-2">Challenger v{challenger.version}</p>
+          {displayKeys.map(k => (
+            <p key={k} className="text-slate-200">
+              {MODEL_LABELS[k]}: <span className={champion[k] !== challenger[k] ? 'text-yellow-400' : 'text-slate-400'}>
+                {challenger[k]}
+              </span>
+            </p>
+          ))}
         </div>
       </div>
 
       <p className="text-slate-500 text-xs">
-        Promote the challenger to champion via MLflow Model Registry when the experiment concludes.
+        Only changed models shown. Promote the challenger via the panel below when the experiment concludes.
       </p>
     </div>
   )

@@ -23,19 +23,20 @@ async def get_config_status():
     champion = load_champion()
     challenger = get_challenger()
 
+    def bundle_summary(b):
+        return {
+            "version": b.get("_bundle_version", "default"),
+            "classifier_model": b.get("classifier_model"),
+            "text_model": b.get("text_model"),
+            "table_model": b.get("table_model"),
+            "chart_model": b.get("chart_model"),
+            "synthesis_model": b.get("synthesis_model"),
+            "judge_model": b.get("judge_model"),
+        }
+
     return {
-        "champion": {
-            "version": champion.get("_bundle_version", "default"),
-            "chart_model": champion.get("chart_model"),
-            "synthesis_model": champion.get("synthesis_model"),
-            "ab_test": champion.get("ab_test", {}),
-        },
-        "challenger": {
-            "version": challenger.get("_bundle_version"),
-            "chart_model": challenger.get("chart_model"),
-            "synthesis_model": challenger.get("synthesis_model"),
-            "traffic_split": challenger.get("ab_test", {}).get("traffic_split", 0.3),
-        } if challenger else None,
+        "champion": bundle_summary(champion),
+        "challenger": bundle_summary(challenger) if challenger else None,
         "experiment_active": challenger is not None,
     }
 
