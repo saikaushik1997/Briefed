@@ -11,7 +11,6 @@ const MODELS = [
 export default function ConfigPanel({ api, config, onUpdate }) {
   const [chartModel, setChartModel] = useState('claude-3-5-sonnet-20241022')
   const [synthesisModel, setSynthesisModel] = useState('gpt-4o')
-  const [trafficSplit, setTrafficSplit] = useState(30)
   const [experimentTag, setExperimentTag] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -25,7 +24,6 @@ export default function ConfigPanel({ api, config, onUpdate }) {
       await axios.post(`${api}/config/challenger`, {
         chart_model: chartModel,
         synthesis_model: synthesisModel,
-        traffic_split: trafficSplit / 100,
         experiment_tag: experimentTag,
       })
       onUpdate()
@@ -89,20 +87,6 @@ export default function ConfigPanel({ api, config, onUpdate }) {
                 {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-slate-400">
-              Challenger traffic — <span className="text-slate-200">{trafficSplit}%</span>
-            </label>
-            <input
-              type="range"
-              min={10}
-              max={90}
-              value={trafficSplit}
-              onChange={e => setTrafficSplit(Number(e.target.value))}
-              className="w-full accent-yellow-400"
-            />
           </div>
 
           <div className="space-y-1">

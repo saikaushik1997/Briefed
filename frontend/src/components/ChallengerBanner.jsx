@@ -9,7 +9,7 @@ export default function ChallengerBanner({ config }) {
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
         <span className="text-yellow-300 font-medium">A/B Experiment Active</span>
-        <span className="ml-auto text-yellow-500 text-xs">{split}% challenger traffic</span>
+        <span className="ml-auto text-yellow-500 text-xs">50/50 split</span>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

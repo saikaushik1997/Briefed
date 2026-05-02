@@ -117,14 +117,23 @@ async def run_graph(document_id: str, pdf_path: str):
         await db.commit()
 
     from .tools.mlflow_logger import start_run, end_run, log_totals
-    from .tools.config_bundle import load_champion
+    from .tools.config_bundle import load_champion, get_challenger
     from .tools.decisions import emit as emit_decision
     import mlflow
+    import random
 
     mlflow_run_id = await start_run(document_id)
 
-    # Load active config bundle from MLflow Registry
-    config = load_champion()
+    champion = load_champion()
+    challenger = get_challenger()
+    if challenger and random.random() < 0.5:
+        config = challenger
+        config_variant = "challenger"
+    else:
+        config = champion
+        config_variant = "champion"
+
+    mlflow.log_param("config_variant", config_variant)
     mlflow.log_param("config_bundle_version", config.get("_bundle_version", "default"))
     mlflow.log_param("chart_model", config.get("chart_model", "gpt-4o"))
     mlflow.log_param("synthesis_model", config.get("synthesis_model", "gpt-4o-mini"))
