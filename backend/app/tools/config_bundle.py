@@ -103,3 +103,56 @@ def get_challenger() -> dict | None:
         return bundle
     except Exception:
         return None
+
+
+def register_challenger(chart_model: str, synthesis_model: str, traffic_split: float, experiment_tag: str) -> str:
+    """Registers a new challenger bundle and sets the 'challenger' alias."""
+    client = MlflowClient()
+    champion = load_champion()
+
+    bundle = {
+        **champion,
+        "chart_model": chart_model,
+        "synthesis_model": synthesis_model,
+        "experiment_tag": experiment_tag,
+        "ab_test": {
+            "active": True,
+            "challenger_version": None,
+            "traffic_split": traffic_split,
+        },
+    }
+    bundle.pop("_bundle_version", None)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        config_path = os.path.join(tmp, "config.json")
+        with open(config_path, "w") as f:
+            json.dump(bundle, f, indent=2)
+
+        mlflow.set_experiment("briefed-pipeline")
+        with mlflow.start_run(run_name="register-challenger") as run:
+            mlflow.log_artifact(config_path, artifact_path="config")
+            run_id = run.info.run_id
+
+        version = client.create_model_version(
+            name=MODEL_NAME,
+            source=f"runs:/{run_id}/config/config.json",
+            run_id=run_id,
+            description=f"Challenger: chart={chart_model}, synthesis={synthesis_model}, split={traffic_split}",
+        )
+        client.set_registered_model_alias(MODEL_NAME, "challenger", version.version)
+        return version.version
+
+
+def remove_challenger() -> None:
+    """Removes the challenger alias, ending the experiment."""
+    client = MlflowClient()
+    client.delete_registered_model_alias(MODEL_NAME, "challenger")
+
+
+def promote_challenger() -> str:
+    """Promotes the challenger to champion and removes the challenger alias."""
+    client = MlflowClient()
+    challenger_version = client.get_model_version_by_alias(MODEL_NAME, "challenger")
+    client.set_registered_model_alias(MODEL_NAME, "champion", challenger_version.version)
+    client.delete_registered_model_alias(MODEL_NAME, "challenger")
+    return challenger_version.version

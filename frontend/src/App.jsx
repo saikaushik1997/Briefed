@@ -5,6 +5,7 @@ import DocumentTable from './components/DocumentTable'
 import DocumentDetail from './components/DocumentDetail'
 import QualityTrendChart from './components/QualityTrendChart'
 import ChallengerBanner from './components/ChallengerBanner'
+import ConfigPanel from './components/ConfigPanel'
 import axios from 'axios'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -57,6 +58,7 @@ export default function App() {
       </header>
 
       {configStatus && <ChallengerBanner config={configStatus} />}
+      <ConfigPanel api={API} config={configStatus} onUpdate={fetchConfigStatus} />
 
       <UploadPanel api={API} onUpload={fetchDocuments} />
 
