@@ -105,21 +105,25 @@ def get_challenger() -> dict | None:
         return None
 
 
-def register_challenger(chart_model: str, synthesis_model: str, traffic_split: float, experiment_tag: str) -> str:
+def register_challenger(
+    classifier_model: str, text_model: str, table_model: str,
+    chart_model: str, synthesis_model: str, judge_model: str,
+    experiment_tag: str,
+) -> str:
     """Registers a new challenger bundle and sets the 'challenger' alias."""
     client = MlflowClient()
     champion = load_champion()
 
     bundle = {
         **champion,
+        "classifier_model": classifier_model,
+        "text_model": text_model,
+        "table_model": table_model,
         "chart_model": chart_model,
         "synthesis_model": synthesis_model,
+        "judge_model": judge_model,
         "experiment_tag": experiment_tag,
-        "ab_test": {
-            "active": True,
-            "challenger_version": None,
-            "traffic_split": traffic_split,
-        },
+        "ab_test": {"active": True, "challenger_version": None, "traffic_split": 0.5},
     }
     bundle.pop("_bundle_version", None)
 

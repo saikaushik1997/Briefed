@@ -9,8 +9,12 @@ const MODELS = [
 ]
 
 export default function ConfigPanel({ api, config, onUpdate }) {
+  const [classifierModel, setClassifierModel] = useState('gpt-4o-mini')
+  const [textModel, setTextModel] = useState('gpt-4o-mini')
+  const [tableModel, setTableModel] = useState('gpt-4o-mini')
   const [chartModel, setChartModel] = useState('claude-3-5-sonnet-20241022')
   const [synthesisModel, setSynthesisModel] = useState('gpt-4o')
+  const [judgeModel, setJudgeModel] = useState('gpt-4o-mini')
   const [experimentTag, setExperimentTag] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -22,8 +26,12 @@ export default function ConfigPanel({ api, config, onUpdate }) {
     setError(null)
     try {
       await axios.post(`${api}/config/challenger`, {
+        classifier_model: classifierModel,
+        text_model: textModel,
+        table_model: tableModel,
         chart_model: chartModel,
         synthesis_model: synthesisModel,
+        judge_model: judgeModel,
         experiment_tag: experimentTag,
       })
       onUpdate()
@@ -67,26 +75,25 @@ export default function ConfigPanel({ api, config, onUpdate }) {
       {!hasChallenger ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs text-slate-400">Chart model</label>
-              <select
-                value={chartModel}
-                onChange={e => setChartModel(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
-              >
-                {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-slate-400">Synthesis model</label>
-              <select
-                value={synthesisModel}
-                onChange={e => setSynthesisModel(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
-              >
-                {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
+            {[
+              ['Classifier', classifierModel, setClassifierModel],
+              ['Text', textModel, setTextModel],
+              ['Table', tableModel, setTableModel],
+              ['Chart', chartModel, setChartModel],
+              ['Synthesis', synthesisModel, setSynthesisModel],
+              ['Judge', judgeModel, setJudgeModel],
+            ].map(([label, value, setter]) => (
+              <div key={label} className="space-y-1">
+                <label className="text-xs text-slate-400">{label} model</label>
+                <select
+                  value={value}
+                  onChange={e => setter(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+                >
+                  {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+            ))}
           </div>
 
           <div className="space-y-1">

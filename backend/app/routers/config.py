@@ -9,9 +9,12 @@ router = APIRouter(prefix="/config", tags=["config"])
 
 
 class ChallengerRequest(BaseModel):
-    chart_model: str
-    synthesis_model: str
-    traffic_split: float = 0.3
+    classifier_model: str = "gpt-4o-mini"
+    text_model: str = "gpt-4o-mini"
+    table_model: str = "gpt-4o-mini"
+    chart_model: str = "gpt-4o"
+    synthesis_model: str = "gpt-4o-mini"
+    judge_model: str = "gpt-4o-mini"
     experiment_tag: str = ""
 
 
@@ -41,9 +44,12 @@ async def get_config_status():
 async def create_challenger(body: ChallengerRequest):
     try:
         version = register_challenger(
+            classifier_model=body.classifier_model,
+            text_model=body.text_model,
+            table_model=body.table_model,
             chart_model=body.chart_model,
             synthesis_model=body.synthesis_model,
-            traffic_split=body.traffic_split,
+            judge_model=body.judge_model,
             experiment_tag=body.experiment_tag,
         )
         return {"version": version}
